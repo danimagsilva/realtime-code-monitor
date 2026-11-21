@@ -1,0 +1,11 @@
+# Dependências locais (nunca enviar para o GitHub)
+node_modules/
+
+# Variáveis de ambiente e logs
+.env
+npm-debug.log*
+*.log
+
+# Ficheiros de sistema (Windows / macOS)
+Thumbs.db
+.DS_Store
