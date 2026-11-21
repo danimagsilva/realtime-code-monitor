@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 
+// Importação dos routers modulares da Inven!RA
+const userUrlRouter = require('./user-url');
+const analyticsUrlRouter = require('./analytics-url');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -22,7 +26,7 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <title>Real-Time Code Monitor AP — Estado do Serviço</title>
       <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 760px; margin: 30px auto; padding: 20px; background: #f8fafc; color: #0f172a; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 820px; margin: 30px auto; padding: 20px; background: #f8fafc; color: #0f172a; }
         .card { background: #ffffff; border: 1px solid #cbd5e1; border-top: 4px solid #0284c7; border-radius: 6px; padding: 20px; }
         h1 { margin-top: 0; font-size: 1.4rem; }
         code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9rem; }
@@ -30,6 +34,7 @@ app.get('/', (req, res) => {
         th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
         th { background: #1e293b; color: #ffffff; }
         a { color: #0284c7; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
       </style>
     </head>
     <body>
@@ -41,7 +46,7 @@ app.get('/', (req, res) => {
             <tr>
               <th>Serviço Inven!RA</th>
               <th>Método</th>
-              <th>URL Público</th>
+              <th>URL Público (Clicável para Teste)</th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +63,7 @@ app.get('/', (req, res) => {
             <tr>
               <td>Deploy / Instanciação (<code>user_url</code>)</td>
               <td><code>POST</code></td>
-              <td><code>${baseUrl}/user_url</code></td>
+              <td><a href="${baseUrl}/user_url" target="_blank">${baseUrl}/user_url</a> <small>(ou <a href="${baseUrl}/user-url" target="_blank">/user-url</a>)</small></td>
             </tr>
             <tr>
               <td>Analytics Disponíveis (<code>analytics_list_url</code>)</td>
@@ -68,7 +73,7 @@ app.get('/', (req, res) => {
             <tr>
               <td>Pedido de Analytics (<code>analytics_url</code>)</td>
               <td><code>POST</code></td>
-              <td><code>${baseUrl}/analytics_url</code></td>
+              <td><a href="${baseUrl}/analytics_url" target="_blank">${baseUrl}/analytics_url</a> <small>(ou <a href="${baseUrl}/analytics-url" target="_blank">/analytics-url</a>)</small></td>
             </tr>
           </tbody>
         </table>
@@ -131,19 +136,8 @@ app.get('/json_params_url', (req, res) => {
   ]);
 });
 
-// 3. Deploy / Instanciação (user_url)
-app.post('/user_url', (req, res) => {
-  const activityID = req.body.activityID || req.query.activityID || 'demo_01';
-  const jsonParams = req.body.json_params || {};
-  const host = req.get('host');
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-
-  console.log('[Deploy Inven!RA] Instância criada:', { activityID, jsonParams });
-
-  res.status(200).json({
-    url: `${protocol}://${host}/atividade?activityID=${encodeURIComponent(activityID)}`
-  });
-});
+// 3. Deploy / Instanciação (user_url) - Delegado para user-url.js
+app.use(['/user-url', '/user_url'], userUrlRouter);
 
 // 4. Analytics Disponíveis (analytics_list_url)
 app.get('/analytics_list_url', (req, res) => {
@@ -163,63 +157,8 @@ app.get('/analytics_list_url', (req, res) => {
   });
 });
 
-// 5. Pedido de Analytics (analytics_url) - Dados de exemplo simulados
-app.post('/analytics_url', (req, res) => {
-  const activityID = req.body.activityID || req.query.activityID || 'demo_01';
-  const host = req.get('host');
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-
-  console.log('[Harvesting Inven!RA] Pedido de analíticas para:', activityID);
-
-  res.status(200).json([
-    {
-      inveniraStdID: 'std_anon_1001',
-      quantAnalytics: [
-        { name: 'Acesso ao IDE Web', type: 'boolean', value: true },
-        { name: 'Download do Codigo-Base', type: 'boolean', value: false },
-        { name: 'Tempo em Inatividade - Idle (segundos)', type: 'integer', value: 45 },
-        { name: 'Percentagem de Codigo Colado - Paste (%)', type: 'integer', value: 12 },
-        { name: 'Numero de Submissoes de Codigo', type: 'integer', value: 3 },
-        { name: 'Taxa de Sucesso nos Testes Unitarios (%)', type: 'integer', value: 100 }
-      ],
-      qualAnalytics: [
-        {
-          name: 'Historico de Erros de Sintaxe e Compilacao',
-          type: 'text/plain',
-          value: 'Submissao 1: IndentationError (linha 4) | Submissao 2: NameError (variavel total) | Submissao 3: Sem erros'
-        },
-        {
-          name: 'Consola de Execucao e Relatorio de Testes',
-          type: 'URL',
-          value: `${protocol}://${host}/logs/${encodeURIComponent(activityID)}/std_anon_1001`
-        }
-      ]
-    },
-    {
-      inveniraStdID: 'std_anon_1002',
-      quantAnalytics: [
-        { name: 'Acesso ao IDE Web', type: 'boolean', value: true },
-        { name: 'Download do Codigo-Base', type: 'boolean', value: true },
-        { name: 'Tempo em Inatividade - Idle (segundos)', type: 'integer', value: 180 },
-        { name: 'Percentagem de Codigo Colado - Paste (%)', type: 'integer', value: 65 },
-        { name: 'Numero de Submissoes de Codigo', type: 'integer', value: 1 },
-        { name: 'Taxa de Sucesso nos Testes Unitarios (%)', type: 'integer', value: 50 }
-      ],
-      qualAnalytics: [
-        {
-          name: 'Historico de Erros de Sintaxe e Compilacao',
-          type: 'text/plain',
-          value: 'Submissao 1: AssertionError no teste_lista_vazia'
-        },
-        {
-          name: 'Consola de Execucao e Relatorio de Testes',
-          type: 'URL',
-          value: `${protocol}://${host}/logs/${encodeURIComponent(activityID)}/std_anon_1002`
-        }
-      ]
-    }
-  ]);
-});
+// 5. Pedido de Analytics (analytics_url) - Delegado para analytics-url.js
+app.use(['/analytics-url', '/analytics_url'], analyticsUrlRouter);
 
 app.listen(PORT, () => {
   console.log(`Real-Time Code Monitor AP (REST Gateway) a correr na porta ${PORT}`);
