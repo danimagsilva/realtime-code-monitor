@@ -1,9 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 
-// Importação dos routers modulares da Inven!RA
+// Routers modulares da Inven!RA (Semana 1)
 const userUrlRouter = require('./user-url');
 const analyticsUrlRouter = require('./analytics-url');
+
+// Padrão de Criação Factory Method (Semanas 2 e 3)
+const { SandboxOrchestrator } = require('./src/sandboxFactory');
 
 const app = express();
 app.use(cors());
@@ -11,6 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const PORT = process.env.PORT || 3000;
+const sandboxOrchestrator = new SandboxOrchestrator();
 
 // Página inicial de verificação de estado (Health Check para Render / Cloud)
 app.get('/', (req, res) => {
@@ -26,11 +30,13 @@ app.get('/', (req, res) => {
       <meta charset="UTF-8">
       <title>Real-Time Code Monitor AP — Estado do Serviço</title>
       <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 820px; margin: 30px auto; padding: 20px; background: #f8fafc; color: #0f172a; }
-        .card { background: #ffffff; border: 1px solid #cbd5e1; border-top: 4px solid #0284c7; border-radius: 6px; padding: 20px; }
-        h1 { margin-top: 0; font-size: 1.4rem; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 840px; margin: 30px auto; padding: 20px; background: #f8fafc; color: #0f172a; }
+        .card { background: #ffffff; border: 1px solid #cbd5e1; border-top: 4px solid #0284c7; border-radius: 6px; padding: 20px; margin-bottom: 18px; }
+        h1, h2 { margin-top: 0; }
+        h1 { font-size: 1.4rem; }
+        h2 { font-size: 1.1rem; color: #0369a1; }
         code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.92rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.92rem; }
         th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
         th { background: #1e293b; color: #ffffff; }
         a { color: #0284c7; text-decoration: none; font-weight: bold; }
@@ -40,13 +46,13 @@ app.get('/', (req, res) => {
     <body>
       <div class="card">
         <h1>Activity Provider: Real-Time Code Monitor</h1>
-        <p>Servidor RESTful operacional para integração com a plataforma <strong>Inven!RA</strong> (MEIW — Daniel Silva, N.º 58727).</p>
+        <p>Servidor RESTful operacional para integração com a plataforma <strong>Inven!RA</strong> e implementação do padrão <strong>Factory Method</strong> (MEIW — Daniel Silva, N.º 58727).</p>
         <table>
           <thead>
             <tr>
-              <th>Serviço Inven!RA</th>
+              <th>Serviço Inven!RA (5 URLs Fixos)</th>
               <th>Método</th>
-              <th>URL Público (Clicável para Teste)</th>
+              <th>URL Público</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +83,16 @@ app.get('/', (req, res) => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="card">
+        <h2>Demonstração do Padrão de Criação: Factory Method (<code>SandboxRunnerFactory</code>)</h2>
+        <p>Testar a instanciação polimórfica de executores de código por linguagem:</p>
+        <ul>
+          <li><a href="${baseUrl}/sandbox/simular?linguagem=python" target="_blank">${baseUrl}/sandbox/simular?linguagem=python</a> (<code>PythonSandboxRunner</code>)</li>
+          <li><a href="${baseUrl}/sandbox/simular?linguagem=javascript" target="_blank">${baseUrl}/sandbox/simular?linguagem=javascript</a> (<code>NodeSandboxRunner</code>)</li>
+          <li><a href="${baseUrl}/sandbox/simular?linguagem=c" target="_blank">${baseUrl}/sandbox/simular?linguagem=c</a> (<code>CSandboxRunner</code>)</li>
+        </ul>
       </div>
     </body>
     </html>
@@ -136,7 +152,7 @@ app.get('/json_params_url', (req, res) => {
   ]);
 });
 
-// 3. Deploy / Instanciação (user_url) - Delegado para user-url.js
+// 3. Deploy / Instanciação (user_url)
 app.use(['/user-url', '/user_url'], userUrlRouter);
 
 // 4. Analytics Disponíveis (analytics_list_url)
@@ -157,9 +173,27 @@ app.get('/analytics_list_url', (req, res) => {
   });
 });
 
-// 5. Pedido de Analytics (analytics_url) - Delegado para analytics-url.js
+// 5. Pedido de Analytics (analytics_url)
 app.use(['/analytics-url', '/analytics_url'], analyticsUrlRouter);
 
+// Endpoint interno de validação do Padrão Factory Method (SandboxOrchestrator)
+app.all('/sandbox/simular', async (req, res) => {
+  try {
+    const linguagem = req.body.linguagem || req.query.linguagem || 'python';
+    const codigoFonte = req.body.codigoFonte || 'def soma(a, b): return a + b';
+    const testesUrl = req.body.testesUrl || 'https://ap-realtime.pt/exemplos/testes.py';
+
+    const resultado = await sandboxOrchestrator.executarCodigo(linguagem, codigoFonte, testesUrl);
+    return res.status(200).json({
+      padraoCriacao: 'Factory Method (SandboxRunnerFactory)',
+      linguagemSolicitada: linguagem,
+      resultado
+    });
+  } catch (err) {
+    return res.status(400).json({ erro: err.message });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Real-Time Code Monitor AP (REST Gateway) a correr na porta ${PORT}`);
+  console.log(`Real-Time Code Monitor AP (REST Gateway + Factory Method) a correr na porta ${PORT}`);
 });
